@@ -1,10 +1,18 @@
-import glob,os,time,shutil,psutil,subprocess
+import glob,os,time,shutil,psutil,subprocess,configparser
 from datetime import datetime
 
-# folder="c:/bin/pdf"
-folder="//192.168.18.72/share/04_Application/tmp/shared_pdf_1"
-output="c:/bin/pdf"
-# output="c:/bin/pdf/test"
+config = configparser.ConfigParser()
+config_file = "config/config.ini"
+config.read('config/config.ini')
+
+# folder="//192.168.18.72/share/04_Application/tmp/shared_pdf_1"
+# output="c:/bin/pdf"
+# pass_d="e:/tools/ADPRP/APDFPR.EXE"
+# pdf_c="c:/bin/PDFConvert.exe"
+folder=config['con']['folder']
+output=config['con']['output']
+pass_d=config['con']['pass_d']
+pdf_c=config['con']['pdf_c']
 
 def process_live(i):
   pl=[]
@@ -14,6 +22,20 @@ def process_live(i):
     return 1
   else:
     return 0
+
+def remove_file(j):
+  file=glob.glob("%s/*.%s" % (folder,j))
+  file_length=len(file)
+  if file_length:
+    for i in file:
+      os.remove(i)
+
+def remove_pdf():
+	pdf_file=folder+'/'+pdf_list
+	if os.path.exists(pdf_file):
+		os.remove(pdf_file)
+		print('已删除pdf文件%s' % pdf_file)
+
 
 while True:
   pdf_file=glob.glob("%s/*.pdf" % folder)
@@ -32,19 +54,19 @@ while True:
   pdf_list_len=len(pdf_list)
   pdf_list_len2=len(pdf_list.replace(" ",""))
   if pdf_list_len2 == pdf_list_len:
-    cmd_p="e:/tools/ADPRP/APDFPR.EXE -batch %s/%s -q" % (folder,pdf_list)
-    command="c:/bin/PDFConvert.exe -i %s/%s -o %s -f html" % (folder,pdf_list,output)
+    cmd_p="%s -batch %s/%s" % (pass_d,folder,pdf_list)
+    command="%s -i %s/%s -o %s -f html" % (pdf_c,folder,pdf_list,output)
   else:
-    cmd_p='e:/tools/ADPRP/APDFPR.EXE -batch "%s/%s" -q' % (folder,pdf_list)
-    command='c:/bin/PDFConvert.exe -i "%s/%s" -o "%s" -f html' % (folder,pdf_list,output)
+    cmd_p='%s -batch "%s/%s"' % (pass_d,folder,pdf_list)
+    command='%s -i "%s/%s" -o "%s" -f html' % (pdf_c,folder,pdf_list,output)
   # os.system(command)
   sub_p=subprocess.Popen(cmd_p)
   time.sleep(2)
   #判断是否有解密临时文件
-  pdf_tmp_file=glob.glob("%s/*.pdf--$$tmp$$3aatmpf80$$" % folder)
+  pdf_tmp_file=glob.glob("%s/*.pdf--*" % folder)
   pdf_tmp_length=len(pdf_tmp_file)
   while pdf_tmp_length:
-    pdf_tmp_file=glob.glob("%s/*.pdf--$$tmp$$3aatmpf80$$" % folder)
+    pdf_tmp_file=glob.glob("%s/*.pdf--*" % folder)
     pdf_tmp_length=len(pdf_tmp_file)
   # pobj=psutil.Process(sub_p.pid) 
   print('tets')
@@ -75,6 +97,7 @@ while True:
         mem_tmp=int(proc.memory_info().rss / 1024 /1024)
         a=1
         p=1
+        pdf_type='pdf'
         pl=process_live('Acrobat.exe')
         while not html_length:
           html_file_src=glob.glob("%s/*.html" % output)
@@ -94,17 +117,20 @@ while True:
             break
           print(mem_info,mem_tmp)
           print(a)
-          print('目前内存占用: %dM' % mem_info)
+          p_time=(datetime.now()-start_t).seconds/60
+          print('目前内存占用: %dM，已花费%s分钟' % (mem_info,p_time))
           if not abs(mem_tmp-mem_info):
             a+=1
           else:
             a=1
             p=1
           if a > 10:
-            print('目前内存占用: %dM' % mem_info)
+            p_time=(datetime.now()-start_t).seconds/60
+            print('目前内存占用: %dM，已花费%s分钟' % (mem_info,p_time))
             sub_c.kill()
             p=os.system("taskkill /f /im Acrobat.exe")
             print('该pdf无法解析，Acrobat进程已kill')
+            remove_pdf()
             pl=process_live('Acrobat.exe')
             break
           if(mem_info > 2500):
@@ -113,10 +139,12 @@ while True:
           # if(proc.memory_info().rss / 1024 /1024 > 120):
           # if(proc.memory_info().rss > 104857600):
           # if(proc.memory_info().rss):
-            print('目前内存占用: %dM' % mem_info)
+            p_time=(datetime.now()-start_t).seconds/60
+            print('目前内存占用: %dM，已花费%s分钟' % (mem_info,p_time))
             sub_c.kill()
             p=os.system("taskkill /f /im Acrobat.exe")
             print('该pdf解析使用内存过多，Acrobat进程已kill')
+            remove_pdf()
             pl=process_live('Acrobat.exe')
             break
           html_file_src=glob.glob("%s/*.html" % output)
@@ -136,7 +164,7 @@ while True:
     #   break
     #如果pdf异常退出，退出解析循环
     if a > 10 or p != 1:
-    	break
+      break
     if a < 10 or p==1:
       html_file_src=glob.glob("%s/*.html" % output)
       html_length=len(html_file_src)
@@ -155,6 +183,10 @@ while True:
   end_t=datetime.now()
   spend_t=(end_t - start_t).seconds/60
   print('解析花费: %s 分钟' % spend_t)
+  print('现在时间:', datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+  #删除解密备份文件
+  bak_type='bak'
+  remove_file(bak_type)
   html_file_src=glob.glob("%s/*.html" % output)
   html_length=len(html_file_src)
   #Acrobat进程没有被kill并且html被解析出来
