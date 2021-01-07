@@ -195,6 +195,8 @@ while True:
     html_list=html_file_src[0].split("\\")[1]
     sub_c.kill()
     shutil.move("%s/%s" % (output,html_list),"%s/%s" % (folder,html_list))
+    out_folder=pdf_list.split(".pdf")[0]
+    shutil.move("%s/%s" % (output,out_folder),"%s/%s" % (folder,out_folder))
     
     #移动文件计2s
     time.sleep(2)
