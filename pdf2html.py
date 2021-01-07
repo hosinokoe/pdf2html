@@ -1,5 +1,6 @@
 import glob,os,time,shutil,psutil,subprocess,configparser
 from datetime import datetime
+from pathlib import Path
 
 config = configparser.ConfigParser()
 config_file = "config/config.ini"
@@ -195,8 +196,10 @@ while True:
     html_list=html_file_src[0].split("\\")[1]
     sub_c.kill()
     shutil.move("%s/%s" % (output,html_list),"%s/%s" % (folder,html_list))
-    out_folder=pdf_list.split(".pdf")[0]
-    shutil.move("%s/%s" % (output,out_folder),"%s/%s" % (folder,out_folder))
+    out_folder_list=pdf_list.split(".pdf")[0]
+    out_folder=output+'/'+pdf_list.split(".pdf")[0]
+    if Path(out_folder).is_dir():
+      shutil.move("%s" % out_folder,"%s/%s" % (folder,out_folder_list))
     
     #移动文件计2s
     time.sleep(2)
